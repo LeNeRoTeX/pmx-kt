@@ -2,12 +2,14 @@ name: publish
 
 on:
   push:
-    tags:
-      - "v*"
+    # Every push to main publishes a 0.1.0-SNAPSHOT (overwriteable per Maven SNAPSHOT semantics).
+    branches: [main]
+    # Tag pushes publish a real release at that version, e.g. v0.1.0 -> 0.1.0.
+    tags: ["v*"]
   workflow_dispatch:
     inputs:
       version:
-        description: "Version to publish (e.g. 0.1.0). Leave blank to derive from commit SHA."
+        description: "Version to publish (e.g. 0.1.0). Leave blank to use the build default (0.1.0-SNAPSHOT)."
         required: false
         default: ""
 
@@ -17,7 +19,7 @@ permissions:
 
 jobs:
   publish:
-    name: publish to GitHub Packages
+    name: build, test & publish to GitHub Packages
     runs-on: ubuntu-latest
 
     steps:
@@ -36,17 +38,22 @@ jobs:
         id: ver
         shell: bash
         run: |
-          if [ "${{ github.event_name }}" = "push" ]; then
+          set -euo pipefail
+          if [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             # Tag form: refs/tags/v0.1.0 -> 0.1.0
             v="${GITHUB_REF_NAME#v}"
-          else
+            kind="release"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             v="${{ github.event.inputs.version }}"
+            kind="manual"
+          else
+            # Push to main -> let Gradle fall back to 0.1.0-SNAPSHOT (see build.gradle.kts).
+            v=""
+            kind="snapshot"
           fi
-          if [ -z "$v" ]; then
-            v="0.0.0-${GITHUB_SHA::7}"
-          fi
-          echo "version=$v" >> "$GITHUB_OUTPUT"
-          echo "Publishing version $v"
+          echo "version=$v"     >> "$GITHUB_OUTPUT"
+          echo "kind=$kind"     >> "$GITHUB_OUTPUT"
+          echo "Publishing kind=$kind version=${v:-<gradle-default>}"
 
       - name: Build, test, publish
         env:
@@ -55,14 +62,16 @@ jobs:
           GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           chmod +x ./gradlew
+          # An empty -Pversion is filtered by build.gradle.kts (`takeIf { it.isNotBlank() }`)
+          # and falls back to 0.1.0-SNAPSHOT, so this single command works for all triggers.
           ./gradlew \
-            -Pversion=${{ steps.ver.outputs.version }} \
+            -Pversion="${{ steps.ver.outputs.version }}" \
             build publish --stacktrace
 
       - name: Upload jar artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: pmx-kt-${{ steps.ver.outputs.version }}
+          name: pmx-kt-${{ steps.ver.outputs.kind }}-${{ github.run_number }}
           path: |
             build/libs/*.jar
           if-no-files-found: error

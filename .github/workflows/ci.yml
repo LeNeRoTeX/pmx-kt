@@ -1,8 +1,9 @@
 name: CI
 
+# Pushes to main and tag pushes are handled by publish.yml, which builds, tests,
+# AND publishes. This workflow is the fast feedback loop for pull requests so
+# they can be validated without granting `packages: write`.
 on:
-  push:
-    branches: [main]
   pull_request:
   workflow_dispatch:
 
