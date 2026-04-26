@@ -27,7 +27,9 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build & test
-        run: ./gradlew build --stacktrace
+        run: |
+          chmod +x ./gradlew
+          ./gradlew build --stacktrace
 
       - name: Upload test report
         if: always()
