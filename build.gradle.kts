@@ -85,4 +85,4 @@ publishing {
 }
 
 /** Repo name fallback used when GITHUB_REPOSITORY is not present (local builds). */
-fun githubRepoName(): String = (findProperty("githubRepoName") as String?) ?: "lang"
+fun githubRepoName(): String = (findProperty("githubRepoName") as String?) ?: "pmx-kt"

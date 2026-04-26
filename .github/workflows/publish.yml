@@ -1,0 +1,68 @@
+name: publish
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to publish (e.g. 0.1.0). Leave blank to derive from commit SHA."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    name: publish to GitHub Packages
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Resolve version
+        id: ver
+        shell: bash
+        run: |
+          if [ "${{ github.event_name }}" = "push" ]; then
+            # Tag form: refs/tags/v0.1.0 -> 0.1.0
+            v="${GITHUB_REF_NAME#v}"
+          else
+            v="${{ github.event.inputs.version }}"
+          fi
+          if [ -z "$v" ]; then
+            v="0.0.0-${GITHUB_SHA::7}"
+          fi
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "Publishing version $v"
+
+      - name: Build, test, publish
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          ./gradlew \
+            -Pversion=${{ steps.ver.outputs.version }} \
+            build publish --stacktrace
+
+      - name: Upload jar artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pmx-kt-${{ steps.ver.outputs.version }}
+          path: |
+            build/libs/*.jar
+          if-no-files-found: error
+          retention-days: 30
