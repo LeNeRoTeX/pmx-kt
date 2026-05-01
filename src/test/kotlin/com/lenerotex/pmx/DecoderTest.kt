@@ -1,5 +1,11 @@
 package com.lenerotex.pmx
 
+import com.lenerotex.pmx.format.ConstTag
+import com.lenerotex.pmx.format.NO_CONST
+import com.lenerotex.pmx.format.NO_STRUCT
+import com.lenerotex.pmx.format.Op
+import com.lenerotex.pmx.format.PMX_VERSION
+import com.lenerotex.pmx.format.TypeTag
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith

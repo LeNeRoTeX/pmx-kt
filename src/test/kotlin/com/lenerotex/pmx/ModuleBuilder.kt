@@ -1,5 +1,10 @@
 package com.lenerotex.pmx
 
+import com.lenerotex.pmx.format.ConstTag
+import com.lenerotex.pmx.format.Op
+import com.lenerotex.pmx.format.PARAM_FLAG_REF
+import com.lenerotex.pmx.format.PARAM_FLAG_STRUCT_ARRAY
+import com.lenerotex.pmx.format.PMX_VERSION
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder

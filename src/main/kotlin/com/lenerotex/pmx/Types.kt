@@ -1,5 +1,7 @@
 package com.lenerotex.pmx
 
+import com.lenerotex.pmx.format.NO_STR
+
 /**
  * A struct value as seen by host Kotlin code: a JSON-shaped map keyed by the
  * struct entry's tag string (or its declared name when no tag is present).

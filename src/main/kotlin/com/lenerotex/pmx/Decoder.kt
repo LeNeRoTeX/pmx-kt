@@ -1,10 +1,17 @@
 package com.lenerotex.pmx
 
+import com.lenerotex.pmx.format.ConstTag
+import com.lenerotex.pmx.format.PARAM_FLAG_REF
+import com.lenerotex.pmx.format.PARAM_FLAG_STRUCT_ARRAY
+import com.lenerotex.pmx.format.parsePmxHeader
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-const val PMX_VERSION: Int = 6
-
+/**
+ * Backwards-compatible thin wrapper over [com.lenerotex.pmx.format.PmxHeader].
+ * Existing callers continue to use `parseHeader(bytes)` and the `hdr.*` fields
+ * unchanged; new code may use `parsePmxHeader` directly from the format module.
+ */
 data class ParsedHeader(
     val version: Int,
     val flags: Int,
@@ -12,6 +19,23 @@ data class ParsedHeader(
     val payloadLen: Int,
 ) {
     val encrypted: Boolean get() = (flags and 1) != 0
+
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is ParsedHeader) return false
+        return version == other.version &&
+            flags == other.flags &&
+            payloadLen == other.payloadLen &&
+            iv.contentEquals(other.iv)
+    }
+
+    override fun hashCode(): Int {
+        var r = version
+        r = 31 * r + flags
+        r = 31 * r + payloadLen
+        r = 31 * r + iv.contentHashCode()
+        return r
+    }
 }
 
 private class BinReader(val buf: ByteArray, start: Int = 0, end: Int = buf.size) {
@@ -34,15 +58,8 @@ private class BinReader(val buf: ByteArray, start: Int = 0, end: Int = buf.size)
 
 /** Parse the 24-byte clear header. Throws if the magic or layout is invalid. */
 fun parseHeader(buf: ByteArray): ParsedHeader {
-    require(buf.size >= 24) { "pmx: file too small" }
-    val magic = String(buf, 0, 4, Charsets.US_ASCII)
-    require(magic == "PMX1") { "pmx: bad magic \"$magic\"" }
-    val r = BinReader(buf, 4, 24)
-    val version = r.u16()
-    val flags = r.u16()
-    val iv = r.bytes(12)
-    val payloadLen = r.u32()
-    return ParsedHeader(version = version, flags = flags, iv = iv, payloadLen = payloadLen)
+    val h = parsePmxHeader(buf)
+    return ParsedHeader(version = h.version, flags = h.flags, iv = h.iv, payloadLen = h.payloadLen)
 }
 
 /** Decode the plaintext payload (post-decryption) into a [Module]. */

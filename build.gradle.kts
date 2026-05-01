@@ -10,6 +10,7 @@ version = (findProperty("version") as String?)
     ?: "0.1.0-SNAPSHOT"
 
 repositories {
+    mavenLocal()
     mavenCentral()
 }
 
@@ -23,6 +24,7 @@ java {
 }
 
 dependencies {
+    api("com.lenerotex:pmx-format-kt:0.1.0-SNAPSHOT")
     testImplementation(kotlin("test"))
 }
 

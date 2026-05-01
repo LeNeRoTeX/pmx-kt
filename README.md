@@ -1,15 +1,21 @@
 # pmx-kt
 
 Kotlin/JVM port of [`pmx-vm`](../runtime) — loads, decrypts, and executes
-encrypted `.pmx` v6 bytecode produced by `pxc`.
+encrypted `.pmx` v6 bytecode produced by [`pxc`](../compiler) or, natively
+inside the JVM, by its sibling [`pxc-kt`](../pxc-kt) compiler.
 
-- **Zero third-party runtime deps.** Kotlin stdlib only.
+- **Zero third-party runtime deps.** Shared binary-format primitives live in
+  [`pmx-format-kt`](../pmx-format-kt); everything else is Kotlin stdlib + JDK.
   AES-256-GCM and SHA-256 come from the JDK; JSON is hand-rolled.
 - **Full feature parity** with the TypeScript runtime: every opcode,
   `serialize` / `deserialize` (object + array, lenient + strict), scalar /
   struct / struct-array native refs, public-side scalar refs,
   `getJsonTag`, the seven built-in natives, instruction-limit guard.
 - **Gradle wrapper**, Kotlin 2.1, JDK 17 toolchain.
+
+For embedding the **compiler** next to the runtime (so you can compile a
+`.px` source string to `.pmx` bytes at startup without shelling out to the
+Go `pxc` binary), pair this module with [`pxc-kt`](../pxc-kt).
 
 ## Quick start
 
@@ -29,6 +35,20 @@ vm.registerNative("SendClientMessage") { args ->
 val script = loadPmx(File("gamemode.pmx"), vm, key = System.getenv("PMX_KEY"))
 script.start()
 script.callPublic("OnPlayerConnect", listOf(42L))
+```
+
+### Compiling and running in one step (with `pxc-kt`)
+
+```kotlin
+import com.lenerotex.pxc.IncludeResolver
+import com.lenerotex.pxc.Pxc
+
+val src = javaClass.getResource("/scripts/main.px")!!.readText()
+val bytes = Pxc.compile(source = src, key = System.getenv("PMX_KEY"))
+
+val vm = VM().also { registerBuiltins(it) }
+val script = loadPmxBytes(bytes, vm, key = System.getenv("PMX_KEY"))
+script.start()
 ```
 
 ## Build & test
@@ -65,13 +85,17 @@ pmx-kt/
   gradlew, gradlew.bat, gradle/wrapper/
   src/
     main/kotlin/com/lenerotex/pmx/
-      Errors.kt   Opcodes.kt   Types.kt
-      Crypto.kt   Decoder.kt   Loader.kt
+      Errors.kt   Types.kt
+      Decoder.kt  Loader.kt
       Vm.kt       Script.kt    Natives.kt
       json/Json.kt
     test/kotlin/com/lenerotex/pmx/...
   docs/
 ```
+
+Crypto (`deriveKey`, `aesGcmDecrypt`) and opcode / tag tables live in
+[`pmx-format-kt`](../pmx-format-kt); pmx-kt depends on it via the `api`
+configuration, so consumers get both on the classpath transparently.
 
 ## Status
 
